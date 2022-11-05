@@ -1,3 +1,6 @@
+/* eslint-disable no-unused-expressions */
+/* eslint-disable react/jsx-props-no-spreading */
+/* eslint-disable no-shadow */
 /* eslint-disable indent */
 /* eslint-disable consistent-return */
 /* eslint-disable no-console */
@@ -7,7 +10,8 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/function-component-definition */
 // ./src/components/App.js
-import React, { useEffect, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import React, { useEffect, useState, useReducer } from 'react';
 import { Board } from '../Board';
 import { Form } from '../Form';
 import { ColumnsContext, TasksContext } from '../../context';
@@ -44,6 +48,8 @@ const App = () => {
     const storage = localStorage;
     const [columns, setColumns] = useState(null);
     const [tasks, setTasks] = useState(null);
+    const [sendForm, setSendForm] = useState(false);
+    const [newTaskValid, setNewTaskValid] = useState(false)
 
     useEffect(() => {
         setColumns(JSON.parse(storage.getItem('columns')))
@@ -52,6 +58,129 @@ const App = () => {
     useEffect(() => {
         setTasks(JSON.parse(storage.getItem('tasks')))
     }, [])
+
+    const initTask = {
+        name: "",
+        idColumn: "",
+        user: ""
+    }
+
+    const reducer = (state, { name, value }) => {
+        return { ...state, [name]: value }
+    }
+
+    const [state, dispatch] = useReducer(reducer, initTask);
+
+    const { name, idColumn, user } = state;
+
+    const validateInputContentByLength = (content, minContentLength) => {
+        if (content.length >= minContentLength) return true
+        return false
+    }
+
+    const setError = (stateToUpdate, fieldToUpdate, errorInfo) => {
+        return { ...stateToUpdate, [`${fieldToUpdate}Error`]: errorInfo }
+    }
+
+    const unsetError = (stateToUpdate, fieldToUpdate) => {
+        return { ...stateToUpdate, [`${fieldToUpdate}Error`]: null }
+    }
+
+    const initTaskError = {
+        nameError: "",
+        idColumnError: "",
+        userError: ""
+    }
+
+    const errorReducer = (errorState, { key, stateValue }) => {
+        // console.log(action);
+        switch (key) {
+            case "name":
+                {
+                    const minValueLength = 4;
+                    const isValid = validateInputContentByLength(stateValue, minValueLength)
+                    if (!isValid) return setError(errorState, key, `Pole Imię musi zawierać minimum ${minValueLength} znaki.`)
+                    return unsetError(errorState, key)
+                }
+            case "idColumn":
+                {
+                    if (!stateValue) return setError(errorState, key, "Wybierz jedną z kolumn.")
+                    return unsetError(errorState, key)
+                }
+            case "user":
+                {
+                    const minValueLength = 4;
+                    const isValid = validateInputContentByLength(stateValue, minValueLength)
+                    if (!isValid) return setError(errorState, key, `Pole Pracownik musi zawierać minimum ${minValueLength} znaki.`)
+                    return unsetError(errorState, key)
+                }
+            default:
+                break;
+        }
+    }
+
+    const [errorState, errorDispatch] = useReducer(errorReducer, initTaskError);
+
+    const { nameError, idColumnError, userError } = errorState;
+
+    const checkForm = () => {
+        Object.keys(state).forEach(key => {
+            errorDispatch({ key, stateValue: state[key] })
+        })
+
+    }
+
+    // useEffect(() => {
+    //     if (sendForm) checkForm()
+    //     setSendForm(false)
+    // }, [sendForm])
+
+    const checkTaskValidity = () => {
+
+    }
+
+    const checkTaskProper = () => {
+        return Object.keys(errorState).every(field => errorState[field] === null);
+    }
+
+    useEffect(() => {
+        if (columns) {
+            // const isNewTaskProper = Object.keys(errorState).every(field => errorState[field] === null);
+            const isNewTaskProper = checkTaskProper();
+
+            const selectedColumnID = Number(state.idColumn);
+
+            if (selectedColumnID) {
+                const selectedColumnLimit = columns.find(column => column.id === selectedColumnID).limit
+                const selectedColumnTasksCount = tasks.filter(task => task.idColumn === selectedColumnID).length
+                const hasColumnFreeSpace = selectedColumnLimit > selectedColumnTasksCount
+                const isTaskCanBeAdded = isNewTaskProper && hasColumnFreeSpace;
+                setNewTaskValid(isTaskCanBeAdded);
+            }
+        }
+
+    }, [errorState, state])
+
+    useEffect(() => {
+        console.log('3use', newTaskValid);
+        if (newTaskValid) {
+            const newTask = { ...state, idColumn: Number(idColumn), id: uuidv4() }
+            const updatedTasks = [...tasks, newTask];
+            setTasks(updatedTasks)
+
+            Object.keys(state).forEach(key => { state[key] = "" })
+            Object.keys(errorState).forEach(key => { errorState[key] = "" })
+        }
+    }, [newTaskValid])
+
+
+
+    const addNewTask = e => {
+        e.preventDefault();
+        checkForm()
+    }
+
+
 
     const isWantedColumnExists = ({ idColumn }, direction) => {
         switch (direction) {
@@ -68,7 +197,6 @@ const App = () => {
 
     const isLimitExceeded = (item, direction) => {
         const wantedColumnID = direction === "next" ? item.idColumn + 1 : item.idColumn - 1;
-
         const wantedColumn = columns.filter(column => column.id === wantedColumnID)[0];
         const { limit: wantedColumnLimit } = wantedColumn;
         const wantedColumnTaskCount = tasks.filter(task => task.idColumn === wantedColumnID).length;
@@ -86,13 +214,13 @@ const App = () => {
     }
 
     const moveForward = (item) => {
-        // console.log(item);
         if (!isWantedColumnExists(item, "next")) return
 
         if (isLimitExceeded(item, "next")) return
 
         const updatedTasks = getUpdatedTasks(item, "next")
         setTasks(updatedTasks)
+        storage.setItem("tasks", JSON.stringify(updatedTasks));
     }
 
     const moveBackward = (item) => {
@@ -102,30 +230,22 @@ const App = () => {
 
         const updatedTasks = getUpdatedTasks(item, "prev")
         setTasks(updatedTasks)
+        storage.setItem("tasks", JSON.stringify(updatedTasks));
+    }
+
+    const formProps = {
+        addNewTask,
+        name,
+        idColumn,
+        user,
+        nameError,
+        idColumnError,
+        userError,
+        dispatch,
     }
 
     return (
-        // columns && tasks ? (
-        //     <ColumnsContext.Provider value={columns}>
-        //         <TasksContext.Provider value={{
-        //             tasks,
-        //             moveForward,
-        //             moveBackward
-        //         }}>
-
-        //             <Board />
-        //         </TasksContext.Provider>
-        //     </ColumnsContext.Provider>
-        // ) :
-        //     <div>
-        //         <Board />
-        //     </div>
         <div>
-            <ColumnsContext.Provider value={{
-                columns
-            }}>
-                <Form />
-            </ColumnsContext.Provider>
             {columns && tasks ? (
                 <ColumnsContext.Provider value={columns}>
                     <TasksContext.Provider value={{
@@ -133,14 +253,17 @@ const App = () => {
                         moveForward,
                         moveBackward
                     }}>
-
+                        <Form {...formProps} />
                         <Board />
                     </TasksContext.Provider>
                 </ColumnsContext.Provider>
             ) :
-                <Board />
-            }
+                <div>
+                    <Form {...formProps} />
+                    <Board />
+                </div>}
         </div>
+
 
     )
 }
