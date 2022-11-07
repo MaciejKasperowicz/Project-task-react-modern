@@ -1,0 +1,30 @@
+.column{
+    border-right:  2px solid #fff;
+    padding: 20px;
+    flex-basis: 23%;
+    margin-bottom: 5%;
+}
+
+.column__title{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5%;
+}
+
+.column__name{
+    text-transform: uppercase;
+}
+
+.column__list{
+    /* display: flex;
+    justify-content: center; */
+    list-style: none;
+}
+
+.column__count{
+    text-align: center;
+    margin-top: 5%;
+}
+

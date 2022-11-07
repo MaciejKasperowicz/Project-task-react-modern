@@ -15,7 +15,7 @@ import React, { useEffect, useState, useReducer } from 'react';
 import { Board } from '../Board';
 import { Form } from '../Form';
 import { ColumnsContext, TasksContext } from '../../context';
-
+import classes from './styles.module.css'
 // const columns = [
 //     { id: 1, name: 'Pending', limit: 4 },
 //     { id: 2, name: 'Analysis - Doing', limit: 3 },
@@ -44,12 +44,12 @@ import { ColumnsContext, TasksContext } from '../../context';
 // localStorage.setItem("columns", JSON.stringify(columns));
 // localStorage.setItem("tasks", JSON.stringify(tasks));
 
-const App = () => {
+export const App = () => {
     const storage = localStorage;
     const [columns, setColumns] = useState(null);
     const [tasks, setTasks] = useState(null);
-    const [sendForm, setSendForm] = useState(false);
-    const [newTaskValid, setNewTaskValid] = useState(false)
+    const [newTaskValid, setNewTaskValid] = useState(false);
+    const [moveAnnouncement, setMoveAnnouncement] = useState("")
 
     useEffect(() => {
         setColumns(JSON.parse(storage.getItem('columns')))
@@ -73,10 +73,25 @@ const App = () => {
 
     const { name, idColumn, user } = state;
 
+    const initTaskError = {
+        nameError: "",
+        idColumnError: "",
+        userError: ""
+    }
+
     const validateInputContentByLength = (content, minContentLength) => {
         if (content.length >= minContentLength) return true
         return false
     }
+
+    const checkColumnFreeSpace = (selectedColumnID) => {
+        const selectedColumnLimit = columns.find(column => column.id === selectedColumnID).limit
+        const selectedColumnTasksCount = tasks.filter(task => task.idColumn === selectedColumnID).length
+        const hasColumnFreeSpace = selectedColumnLimit > selectedColumnTasksCount
+        return hasColumnFreeSpace
+    }
+
+
 
     const setError = (stateToUpdate, fieldToUpdate, errorInfo) => {
         return { ...stateToUpdate, [`${fieldToUpdate}Error`]: errorInfo }
@@ -86,42 +101,66 @@ const App = () => {
         return { ...stateToUpdate, [`${fieldToUpdate}Error`]: null }
     }
 
-    const initTaskError = {
-        nameError: "",
-        idColumnError: "",
-        userError: ""
-    }
-
-    const errorReducer = (errorState, { key, stateValue }) => {
+    const formErrorReducer = (formErrorState, { key, stateValue }) => {
         // console.log(action);
         switch (key) {
             case "name":
                 {
                     const minValueLength = 4;
                     const isValid = validateInputContentByLength(stateValue, minValueLength)
-                    if (!isValid) return setError(errorState, key, `Pole Imię musi zawierać minimum ${minValueLength} znaki.`)
-                    return unsetError(errorState, key)
+                    if (!isValid) return setError(formErrorState, key, `Pole Imię musi zawierać minimum ${minValueLength} znaki.`)
+                    return unsetError(formErrorState, key)
                 }
             case "idColumn":
                 {
-                    if (!stateValue) return setError(errorState, key, "Wybierz jedną z kolumn.")
-                    return unsetError(errorState, key)
+                    if (!stateValue) return setError(formErrorState, key, "Wybierz jedną z kolumn.")
+                    const hasColumnFreeSpace = checkColumnFreeSpace(Number(stateValue));
+                    if (!hasColumnFreeSpace) return setError(formErrorState, key, "Wybrana kolumna osiągnęła limit.")
+                    return unsetError(formErrorState, key)
                 }
             case "user":
                 {
                     const minValueLength = 4;
                     const isValid = validateInputContentByLength(stateValue, minValueLength)
-                    if (!isValid) return setError(errorState, key, `Pole Pracownik musi zawierać minimum ${minValueLength} znaki.`)
-                    return unsetError(errorState, key)
+                    if (!isValid) return setError(formErrorState, key, `Pole Pracownik musi zawierać minimum ${minValueLength} znaki.`)
+                    return unsetError(formErrorState, key)
                 }
             default:
                 break;
         }
     }
 
-    const [errorState, errorDispatch] = useReducer(errorReducer, initTaskError);
 
-    const { nameError, idColumnError, userError } = errorState;
+    const [formErrorState, errorDispatch] = useReducer(formErrorReducer, initTaskError);
+
+    const { nameError, idColumnError, userError } = formErrorState;
+
+    const checkTaskProper = () => {
+        return Object.keys(formErrorState).every(field => formErrorState[field] === null);
+    }
+
+
+
+    const checkTaskValidity = () => {
+        // checkForm();
+        const selectedColumnID = Number(state.idColumn);
+        if (selectedColumnID) {
+            const isNewTaskProper = checkTaskProper();
+            const hasColumnFreeSpace = checkColumnFreeSpace(selectedColumnID);
+            // if (!hasColumnFreeSpace) {
+            //     setMoveAnnouncement("Nie można dodać zdania, kolumna osiągnęła limit.");
+            //     clearInputs();
+            // }
+            const isTaskCanBeAdded = isNewTaskProper && hasColumnFreeSpace;
+            setNewTaskValid(isTaskCanBeAdded);
+        } else {
+            setNewTaskValid(false);
+        }
+    }
+
+
+
+
 
     const checkForm = () => {
         Object.keys(state).forEach(key => {
@@ -130,52 +169,49 @@ const App = () => {
 
     }
 
-    // useEffect(() => {
-    //     if (sendForm) checkForm()
-    //     setSendForm(false)
-    // }, [sendForm])
 
-    const checkTaskValidity = () => {
 
+
+
+
+
+    const clearInputs = () => {
+        Object.keys(state).forEach(key => { state[key] = "" })
     }
 
-    const checkTaskProper = () => {
-        return Object.keys(errorState).every(field => errorState[field] === null);
+    const clearErrors = () => {
+        Object.keys(formErrorState).forEach(key => { formErrorState[key] = "" })
+        setMoveAnnouncement("")
     }
+
+
 
     useEffect(() => {
-        if (columns) {
-            // const isNewTaskProper = Object.keys(errorState).every(field => errorState[field] === null);
-            const isNewTaskProper = checkTaskProper();
+        checkTaskValidity();
+    }, [formErrorState, state])
 
-            const selectedColumnID = Number(state.idColumn);
+    const addNewTask = () => {
+        const newTask = { ...state, idColumn: Number(idColumn), id: uuidv4() };
+        const updatedTasks = [...tasks, newTask];
+        setTasks(updatedTasks);
+    }
 
-            if (selectedColumnID) {
-                const selectedColumnLimit = columns.find(column => column.id === selectedColumnID).limit
-                const selectedColumnTasksCount = tasks.filter(task => task.idColumn === selectedColumnID).length
-                const hasColumnFreeSpace = selectedColumnLimit > selectedColumnTasksCount
-                const isTaskCanBeAdded = isNewTaskProper && hasColumnFreeSpace;
-                setNewTaskValid(isTaskCanBeAdded);
-            }
-        }
 
-    }, [errorState, state])
+
+
 
     useEffect(() => {
         console.log('3use', newTaskValid);
         if (newTaskValid) {
-            const newTask = { ...state, idColumn: Number(idColumn), id: uuidv4() }
-            const updatedTasks = [...tasks, newTask];
-            setTasks(updatedTasks)
-
-            Object.keys(state).forEach(key => { state[key] = "" })
-            Object.keys(errorState).forEach(key => { errorState[key] = "" })
+            addNewTask();
+            clearInputs();
+            clearErrors();
         }
     }, [newTaskValid])
 
 
 
-    const addNewTask = e => {
+    const handleNewTask = e => {
         e.preventDefault();
         checkForm()
     }
@@ -214,27 +250,41 @@ const App = () => {
     }
 
     const moveForward = (item) => {
-        if (!isWantedColumnExists(item, "next")) return
+        if (!isWantedColumnExists(item, "next")) {
+            setMoveAnnouncement("Nie można przesunąć zadania, następna kolumna nie istnieje.");
+            return
+        }
 
-        if (isLimitExceeded(item, "next")) return
+        if (isLimitExceeded(item, "next")) {
+            setMoveAnnouncement("Nie można przesunąć zadania, następna kolumna osiągnęła limit.");
+            return
+        }
 
         const updatedTasks = getUpdatedTasks(item, "next")
+        setMoveAnnouncement("")
         setTasks(updatedTasks)
         storage.setItem("tasks", JSON.stringify(updatedTasks));
     }
 
     const moveBackward = (item) => {
-        if (!isWantedColumnExists(item, "prev")) return
+        if (!isWantedColumnExists(item, "prev")) {
+            setMoveAnnouncement("Nie można przesunąć zadania, poprzednia kolumna nie istnieje.");
+            return
+        }
 
-        if (isLimitExceeded(item, "prev")) return
+        if (isLimitExceeded(item, "prev")) {
+            setMoveAnnouncement("Nie można przesunąć zadania, poprzednia kolumna osiągnęła limit.");
+            return
+        }
 
         const updatedTasks = getUpdatedTasks(item, "prev")
+        setMoveAnnouncement("")
         setTasks(updatedTasks)
         storage.setItem("tasks", JSON.stringify(updatedTasks));
     }
 
     const formProps = {
-        addNewTask,
+        handleNewTask,
         name,
         idColumn,
         user,
@@ -244,8 +294,10 @@ const App = () => {
         dispatch,
     }
 
+
     return (
-        <div>
+        <main className={classes.kanban}>
+            <h1 className={classes.kanban__title}>kanban</h1>
             {columns && tasks ? (
                 <ColumnsContext.Provider value={columns}>
                     <TasksContext.Provider value={{
@@ -254,7 +306,7 @@ const App = () => {
                         moveBackward
                     }}>
                         <Form {...formProps} />
-                        <Board />
+                        <Board moveAnnouncement={moveAnnouncement} />
                     </TasksContext.Provider>
                 </ColumnsContext.Provider>
             ) :
@@ -262,7 +314,7 @@ const App = () => {
                     <Form {...formProps} />
                     <Board />
                 </div>}
-        </div>
+        </main>
 
 
     )

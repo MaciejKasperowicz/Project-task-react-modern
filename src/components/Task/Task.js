@@ -6,6 +6,8 @@
 /* eslint-disable react/function-component-definition */
 import React, { useContext } from 'react';
 import { TasksContext } from '../../context';
+import classes from './styles.module.css';
+
 
 export const Task = (props) => {
     const { task } = props;
@@ -13,12 +15,11 @@ export const Task = (props) => {
 
     const { moveForward, moveBackward } = useContext(TasksContext);
     return (
-        <li>
-            <div>
-                {task.name}
-                <button onClick={() => moveForward(task)}>next</button>
-                <button onClick={() => moveBackward(task)}>prev</button>
-            </div>
+        <li className={classes.task}>
+            <button className={classes.task__button} onClick={() => moveBackward(task)}>{String.fromCharCode(8592)}</button>
+            <h5 className={classes.task__name}>{task.name}</h5>
+            <button className={classes.task__button} onClick={() => moveForward(task)}>{String.fromCharCode(8594)}</button>
+
 
         </li>
     )

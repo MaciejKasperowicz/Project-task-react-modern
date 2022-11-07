@@ -3,21 +3,22 @@
 import React, { useContext } from 'react';
 import { ColumnsContext } from '../../context';
 import { Column } from '../Column';
+import classes from './styles.module.css'
 
-export const Board = () => {
-    const columns = useContext(ColumnsContext)
+export const Board = (props) => {
+    const columns = useContext(ColumnsContext);
+
+    const { moveAnnouncement } = props
 
     return (
-        <ul style={{
-            display: "flex",
-            justifyContent: "space-around",
-            flexWrap: "wrap",
-            listStyle: "none"
-        }}>
-            {columns.map(column => (
-                <Column key={column.id} column={column} />
-            ))}
-        </ul>
+        <div>
+            <p>{moveAnnouncement}</p>
+            <ul className={classes.board__list}>
+                {columns.map(column => (
+                    <Column key={column.id} column={column} />
+                ))}
+            </ul>
+        </div>
 
     )
 }

@@ -13,12 +13,12 @@ import { ColumnsContext } from '../../context';
 export const Form = (props) => {
     const columns = useContext(ColumnsContext);
     // console.log(columns);
-    const { addNewTask, name, idColumn, user, nameError, idColumnError, userError, dispatch } = props;
+    const { handleNewTask, name, idColumn, user, nameError, idColumnError, userError, dispatch } = props;
 
 
     return (
         <div>
-            <form onSubmit={addNewTask}>
+            <form onSubmit={handleNewTask}>
                 <div>
                     <label>Nazwa zadania:</label>
                     <input type="text" name="name"
