@@ -11,11 +11,16 @@
 /* eslint-disable react/function-component-definition */
 // ./src/components/App.js
 import { v4 as uuidv4 } from 'uuid';
-import React, { useEffect, useState, useReducer } from 'react';
+import React, { useEffect, useState, useReducer, useContext } from 'react';
 import { Board } from '../Board';
 import { Form } from '../Form';
-import { ColumnsContext, TasksContext } from '../../context';
-import classes from './styles.module.css'
+import { ErrorAnnouncement } from '../ErrorAnnouncement';
+
+import { ColumnsContext, TasksContext, MovingMethodsContext } from '../../context';
+import classes from './styles.module.css';
+
+
+// *****************AUXILIARY CODE TO CHECK IF LOCALSTORAGE WORKS****************
 // const columns = [
 //     { id: 1, name: 'Pending', limit: 4 },
 //     { id: 2, name: 'Analysis - Doing', limit: 3 },
@@ -43,21 +48,38 @@ import classes from './styles.module.css'
 
 // localStorage.setItem("columns", JSON.stringify(columns));
 // localStorage.setItem("tasks", JSON.stringify(tasks));
+// *****************END OF AUXILIARY CODE****************
 
 export const App = () => {
     const storage = localStorage;
     const [columns, setColumns] = useState(null);
     const [tasks, setTasks] = useState(null);
     const [newTaskValid, setNewTaskValid] = useState(false);
-    const [moveAnnouncement, setMoveAnnouncement] = useState("")
+    const [moveAnnouncement, setMoveAnnouncement] = useState("");
+
+    const defaultColumns = useContext(ColumnsContext);
+    const defaultTasks = useContext(TasksContext);
+    const storageColumns = JSON.parse(storage.getItem('columns'));
+    const storageTasks = JSON.parse(storage.getItem('tasks'));
 
     useEffect(() => {
-        setColumns(JSON.parse(storage.getItem('columns')))
+        if (storageColumns) {
+            setColumns(storageColumns)
+        } else {
+            setColumns(defaultColumns)
+        }
+
+
     }, [])
 
     useEffect(() => {
-        setTasks(JSON.parse(storage.getItem('tasks')))
+        if (storageTasks) {
+            setTasks(storageTasks)
+        } else {
+            setTasks(defaultTasks);
+        }
     }, [])
+
 
     const initTask = {
         name: "",
@@ -102,7 +124,6 @@ export const App = () => {
     }
 
     const formErrorReducer = (formErrorState, { key, stateValue }) => {
-        // console.log(action);
         switch (key) {
             case "name":
                 {
@@ -115,7 +136,7 @@ export const App = () => {
                 {
                     if (!stateValue) return setError(formErrorState, key, "Wybierz jedną z kolumn.")
                     const hasColumnFreeSpace = checkColumnFreeSpace(Number(stateValue));
-                    if (!hasColumnFreeSpace) return setError(formErrorState, key, "Wybrana kolumna osiągnęła limit.")
+                    if (!hasColumnFreeSpace) return setError(formErrorState, key, "Wybrana kolumna osiągnęła już limit - nie można dodać.")
                     return unsetError(formErrorState, key)
                 }
             case "user":
@@ -140,27 +161,17 @@ export const App = () => {
     }
 
 
-
     const checkTaskValidity = () => {
-        // checkForm();
         const selectedColumnID = Number(state.idColumn);
         if (selectedColumnID) {
             const isNewTaskProper = checkTaskProper();
             const hasColumnFreeSpace = checkColumnFreeSpace(selectedColumnID);
-            // if (!hasColumnFreeSpace) {
-            //     setMoveAnnouncement("Nie można dodać zdania, kolumna osiągnęła limit.");
-            //     clearInputs();
-            // }
             const isTaskCanBeAdded = isNewTaskProper && hasColumnFreeSpace;
             setNewTaskValid(isTaskCanBeAdded);
         } else {
             setNewTaskValid(false);
         }
     }
-
-
-
-
 
     const checkForm = () => {
         Object.keys(state).forEach(key => {
@@ -169,14 +180,9 @@ export const App = () => {
 
     }
 
-
-
-
-
-
-
     const clearInputs = () => {
         Object.keys(state).forEach(key => { state[key] = "" })
+        setMoveAnnouncement("")
     }
 
     const clearErrors = () => {
@@ -194,14 +200,11 @@ export const App = () => {
         const newTask = { ...state, idColumn: Number(idColumn), id: uuidv4() };
         const updatedTasks = [...tasks, newTask];
         setTasks(updatedTasks);
+        storage.setItem("tasks", JSON.stringify(updatedTasks));
     }
 
 
-
-
-
     useEffect(() => {
-        console.log('3use', newTaskValid);
         if (newTaskValid) {
             addNewTask();
             clearInputs();
@@ -210,15 +213,15 @@ export const App = () => {
     }, [newTaskValid])
 
 
-
     const handleNewTask = e => {
         e.preventDefault();
-        checkForm()
+        checkForm();
+        setMoveAnnouncement("")
     }
 
 
-
     const isWantedColumnExists = ({ idColumn }, direction) => {
+        console.log(columns);
         switch (direction) {
             case "next":
                 if (idColumn < columns.length) return true
@@ -294,28 +297,33 @@ export const App = () => {
         dispatch,
     }
 
+    const errors = [nameError, idColumnError, userError, moveAnnouncement]
+
 
     return (
-        <main className={classes.kanban}>
-            <h1 className={classes.kanban__title}>kanban</h1>
-            {columns && tasks ? (
-                <ColumnsContext.Provider value={columns}>
-                    <TasksContext.Provider value={{
-                        tasks,
-                        moveForward,
-                        moveBackward
-                    }}>
-                        <Form {...formProps} />
-                        <Board moveAnnouncement={moveAnnouncement} />
-                    </TasksContext.Provider>
-                </ColumnsContext.Provider>
-            ) :
-                <div>
-                    <Form {...formProps} />
-                    <Board />
-                </div>}
-        </main>
 
+        <main className={classes.kanban}>
+            <MovingMethodsContext.Provider value={{
+                moveForward,
+                moveBackward
+            }}>
+                <h1 className={classes.kanban__title}>kanban</h1>
+                {storageTasks ? (
+                    <ColumnsContext.Provider value={columns}>
+                        <TasksContext.Provider value={tasks}>
+                            <Form {...formProps} />
+                            <ErrorAnnouncement errors={errors} />
+                            <Board moveAnnouncement={moveAnnouncement} />
+                        </TasksContext.Provider>
+                    </ColumnsContext.Provider>
+                ) :
+                    <div>
+                        <Form {...formProps} />
+                        <ErrorAnnouncement errors={errors} />
+                        <Board />
+                    </div>}
+            </MovingMethodsContext.Provider>
+        </main>
 
     )
 }

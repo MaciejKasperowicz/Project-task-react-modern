@@ -10,8 +10,9 @@ import classes from './styles.module.css'
 export const Column = (props) => {
     const { column } = props;
 
-    const { tasks } = useContext(TasksContext);
-    const columnTasks = tasks ? tasks.filter(task => task.idColumn === column.id) : [];
+    const tasks = useContext(TasksContext);
+    // const columnTasks = tasks ? tasks.filter(task => task.idColumn === column.id) : [];
+    const columnTasks = tasks.filter(task => task.idColumn === column.id);
 
     return (
         <div className={classes.column}>
@@ -20,10 +21,6 @@ export const Column = (props) => {
                     <h4 className={classes.column__name}>{column.name}</h4>
                     <h4>Limit:{column.limit}</h4>
                 </div>
-
-
-
-
 
                 <ul className={classes.column__list}>
                     {columnTasks.map(task => (

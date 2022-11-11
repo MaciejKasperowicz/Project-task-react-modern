@@ -5,18 +5,14 @@ import { ColumnsContext } from '../../context';
 import { Column } from '../Column';
 import classes from './styles.module.css'
 
-export const Board = (props) => {
+export const Board = () => {
     const columns = useContext(ColumnsContext);
-
-    const { moveAnnouncement } = props
-
     return (
         <div>
-            <p>{moveAnnouncement}</p>
             <ul className={classes.board__list}>
-                {columns.map(column => (
+                {columns ? columns.map(column => (
                     <Column key={column.id} column={column} />
-                ))}
+                )) : []}
             </ul>
         </div>
 

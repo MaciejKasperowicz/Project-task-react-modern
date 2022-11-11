@@ -1,0 +1,11 @@
+.errorsList{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0 auto;
+    align-items: center;
+    list-style: none;
+    color: #25316D;
+    font-weight: bold;
+    margin: 2% 0;
+}

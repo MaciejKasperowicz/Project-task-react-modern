@@ -3,16 +3,24 @@
     border: 1px solid white;
     border-radius: 5px;
     margin-bottom: 3%;
-    padding: 5px;
+    padding: 10px;
     justify-content:space-between;
     align-items: center;
 }
 
 .task__button{
+    display: block;
     font-size: 20px;
     background-color: transparent;
     border: none;
+    cursor: pointer;
+    transition: color 0.5s
 }
+
+.task__button:hover{
+    color: #A5F1E9;
+}
+
 .task__name{
     font-size: 15px;
 }

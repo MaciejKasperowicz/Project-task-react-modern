@@ -1,4 +1,5 @@
 import ColumnsContext from "./ColumnsContext";
 import TasksContext from "./TasksContext";
+import MovingMethodsContext from "./MovingMethodsContext";
 
-export { ColumnsContext, TasksContext };
+export { ColumnsContext, TasksContext, MovingMethodsContext };
